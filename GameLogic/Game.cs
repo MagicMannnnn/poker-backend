@@ -65,7 +65,7 @@ namespace PokerServer.GameLogic
                     if (_round.doAction(action, amount))
                     {
                         await BroadcastStateAsync();
-                        if (await _round.endCycle(BroadcastStateAsync, BroadcastAsync))
+                        if (await _round.endCycle(BroadcastStateAsyncShowCards, BroadcastAsync))
                         {
                             await Task.Delay(500);
                             await BroadcastAsync(new { type = "deal", board = _round.board.Select(c => c.ToString()).ToArray(), pot = _round.Pot });
@@ -85,7 +85,7 @@ namespace PokerServer.GameLogic
         {
             foreach (var player in _players)
             {
-                
+
                 var players = _players.Select(p => new
                 {
                     id = p.Id,
@@ -94,6 +94,26 @@ namespace PokerServer.GameLogic
                     betAmount = p.Bet,
                     isHost = p.IsHost,
                     hand = started && p.Id == player.Id ? p.hand : null
+                }).ToArray();
+
+                var payload = new { type = "playerList", players, youId = player.Id };
+                await player.SendAsync(payload);
+            }
+        }
+        
+        private async Task BroadcastStateAsyncShowCards()
+        {
+            foreach (var player in _players)
+            {
+                
+                var players = _players.Select(p => new
+                {
+                    id = p.Id,
+                    name = p.Name,
+                    money = p.Money,
+                    betAmount = p.Bet,
+                    isHost = p.IsHost,
+                    hand = p.hand
                 }).ToArray();
 
                 var payload = new { type = "playerList", players, youId = player.Id };
