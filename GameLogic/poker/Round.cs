@@ -33,6 +33,7 @@ namespace PokerServer.GameLogic.poker
             _deck.Shuffle();
             foreach (Player p in _players)
             {
+                p.isPlaying = true;
                 p.setHand(_deck.Pop(), _deck.Pop());
             }
 
@@ -96,9 +97,20 @@ namespace PokerServer.GameLogic.poker
 
         public async Task<bool> endCycle(Func<Task> BroadcastStateAsync, Func<object, Task> BroadcastAsync)
         {
-            Console.WriteLine("Player Index A: " + _playerIndex);
             _playerIndex %= _players.Count;
-            Console.WriteLine("Player Index B: " + _playerIndex);
+            int counter = 0;
+            while (!_players[_playerIndex].isPlaying)
+            {
+                _playerIndex++;
+                _playerIndex %= _players.Count;
+                counter++;
+                if (counter == _players.Count - 1)
+                {
+                    _cycles = 4;
+                    _playerIndex = _cycle_start_index;
+                    break;
+                }
+            }
             if (_playerIndex == _cycle_start_index)
             {
                 foreach (Player p in _players)
