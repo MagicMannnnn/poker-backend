@@ -117,7 +117,7 @@ namespace PokerServer.GameLogic.poker
             }
             return 1000 + (float)(prevValue / 15f);
         }
-        
+
         private static float getFlush(Card[] cards)
         {
             String prevSuit = cards[0].Suit;
@@ -129,40 +129,29 @@ namespace PokerServer.GameLogic.poker
                 }
             }
             Array.Sort(cards, (a, b) => b.Value.CompareTo(a.Value));
-            return 10000 + (float)(cards[0].Value / 15f); 
+            return 10000 + (float)(cards[0].Value / 15f);
         }
 
         private static float getFH(Card[] cards)
         {
-            int bestValue = 0;
-            for (int i = 0; i < cards.Length; i++)
+            var groups = cards
+            .GroupBy(c => c.Value)
+            .Select(g => new { Value = g.Key, Count = g.Count() })
+            .OrderByDescending(g => g.Count)
+            .ThenByDescending(g => g.Value)
+            .ToArray();
+
+            if (groups.Length == 2 && groups.Any(g => g.Count == 3) && groups.Any(g => g.Count == 2))
             {
-                Card card = cards[i];
-                for (int j = i + 1; j < cards.Length; j++)
-                {
-                    Card card2 = cards[j];
-                    for (int k = j + 1; k < cards.Length; k++)
-                    {
-                        Card card3 = cards[k];
-                        if (card.Value == card2.Value && card2.Value == card3.Value)
-                        {
-                            bestValue = Math.Max(bestValue, card.Value);
-                            Card[] TOAKCards = { card, card2, card3 };
-                            Card[] newCards = (Card[])cards.Clone();
-                            newCards.Except(TOAKCards);
-                            if (getPair(newCards) > 0)
-                            {
-                                Array.Sort(cards, (a, b) => b.Value.CompareTo(a.Value));
-                                return 100000 + (float)(cards[0].Value / 15f);
-                            }
-                            return 0;
-                        }
-                    }
-                }
+                int three = groups.First(g => g.Count == 3).Value;
+                int pair = groups.First(g => g.Count == 2).Value;
+
+                // score however you like; example:
+                return 1000000 + Math.Max(three, pair) / 15f;
             }
-            return 0;
+            return 0f;
         }
-        
+
 
         private static float getFOAK(Card[] cards)
         {
@@ -177,13 +166,13 @@ namespace PokerServer.GameLogic.poker
                     {
                         Card card3 = cards[k];
                         for (int l = k + 1; l < cards.Length; l++)
-                    {
-                        Card card4 = cards[l];
-                        if (card.Value == card2.Value && card2.Value == card3.Value && card3.Value == card4.Value)
                         {
-                            bestValue = Math.Max(bestValue, card.Value);
+                            Card card4 = cards[l];
+                            if (card.Value == card2.Value && card2.Value == card3.Value && card3.Value == card4.Value)
+                            {
+                                bestValue = Math.Max(bestValue, card.Value);
+                            }
                         }
-                    }
                     }
                 }
             }
