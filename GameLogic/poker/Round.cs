@@ -169,6 +169,13 @@ namespace PokerServer.GameLogic.poker
                 {
                     await endRound(BroadcastStateAsync, BroadcastAsync);
                 }
+
+                while (!_players[_playerIndex].isPlaying)
+                {
+                    _playerIndex++;
+                    _playerIndex %= _players.Count;
+                }
+
                 return true;
             }
             return false;
