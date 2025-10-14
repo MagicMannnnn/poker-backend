@@ -26,7 +26,7 @@ namespace PokerServer.GameLogic.poker
                 foreach (var setOfFive in ComboUtil.KCombinations(cards, 5))
                 {
                     float highCard = getHighCard(players[i].realhand);
-                    best = Math.Max(best, highCard + getPair(setOfFive) + getTOAK(setOfFive) + getStraight(setOfFive) + getFlush(setOfFive) + getFH(setOfFive) + getFOAK(setOfFive) + getStraightFlush(setOfFive));
+                    best = Math.Max(best, highCard + getPair(setOfFive) + getTwoPair(setOfFive) + getTOAK(setOfFive) + getStraight(setOfFive) + getFlush(setOfFive) + getFH(setOfFive) + getFOAK(setOfFive) + getStraightFlush(setOfFive));
                 }
                 scores[i] = best;
                 Console.WriteLine(i + ": " + scores[i]);
@@ -76,6 +76,45 @@ namespace PokerServer.GameLogic.poker
             return bestValue == 0 ? 0 : 10 + (float)(bestValue / 15f);
         }
 
+        private static float getTwoPair(Card[] cards)
+        {
+            int highPair = 0; // highest pair rank
+            int lowPair = 0; // second highest pair rank
+
+            for (int i = 0; i < cards.Length; i++)
+            {
+                for (int j = i + 1; j < cards.Length; j++)
+                {
+                    if (cards[i].Value == cards[j].Value)
+                    {
+                        int v = cards[i].Value;
+
+                        // ignore duplicates of the same rank (we only want distinct pair ranks)
+                        if (v == highPair || v == lowPair) continue;
+
+                        // place v into high/low keeping them ordered
+                        if (v > highPair)
+                        {
+                            lowPair = highPair;
+                            highPair = v;
+                        }
+                        else if (v > lowPair)
+                        {
+                            lowPair = v;
+                        }
+                    }
+                }
+            }
+
+            // need two *distinct* pairs
+            if (lowPair == 0 || highPair == 0) return 0f;
+
+            // scoring similar to your style: base 20 + tie-breakers
+            // (high pair dominates; low pair is a smaller tie-breaker)
+            return 100f + (highPair / 15f);
+        }
+
+
 
         private static float getTOAK(Card[] cards)
         {
@@ -96,7 +135,7 @@ namespace PokerServer.GameLogic.poker
                     }
                 }
             }
-            return bestValue == 0 ? 0 : 100 + (float)(bestValue / 15f);
+            return bestValue == 0 ? 0 : 1000 + (float)(bestValue / 15f);
         }
 
 
@@ -116,7 +155,7 @@ namespace PokerServer.GameLogic.poker
                     return 0;
                 }
             }
-            return 1000 + (float)(prevValue / 15f);
+            return 10000 + (float)(prevValue / 15f);
         }
 
         private static float getFlush(Card[] cards)
@@ -130,7 +169,7 @@ namespace PokerServer.GameLogic.poker
                 }
             }
             Array.Sort(cards, (a, b) => b.Value.CompareTo(a.Value));
-            return 10000 + (float)(cards[0].Value / 15f);
+            return 100000 + (float)(cards[0].Value / 15f);
         }
 
         private static float getFH(Card[] cards)
@@ -148,7 +187,7 @@ namespace PokerServer.GameLogic.poker
                 int pair = groups.First(g => g.Count == 2).Value;
 
                 // score however you like; example:
-                return 1000000 + Math.Max(three, pair) / 15f;
+                return 10000000 + Math.Max(three, pair) / 15f;
             }
             return 0f;
         }
@@ -177,14 +216,14 @@ namespace PokerServer.GameLogic.poker
                     }
                 }
             }
-            return bestValue == 0 ? 0 : 1000000 + (float)(bestValue / 15f);
+            return bestValue == 0 ? 0 : 10000000 + (float)(bestValue / 15f);
         }
 
         private static float getStraightFlush(Card[] cards)
         {
             if (getStraight(cards) > 0 && getFlush(cards) > 0)
             {
-                return 10000000 + getStraight(cards);
+                return 100000000 + getStraight(cards);
             }
             return 0;
         }
