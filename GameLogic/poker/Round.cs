@@ -140,6 +140,11 @@ namespace PokerServer.GameLogic.poker
                     _playerIndex++;
                     _playerIndex %= _players.Count;
                 }
+                while (!_players[_cycle_start_index].isPlaying)
+                {
+                    _cycle_start_index++;
+                    _cycle_start_index %= _players.Count;
+                }
             }
             if (_playerIndex == _cycle_start_index)
             {
