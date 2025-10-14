@@ -28,16 +28,18 @@ namespace PokerServer.GameLogic.poker
                     best = Math.Max(best, getHighCard(setOfFive) + getPair(setOfFive));
                 }
                 scores[i] = best;
-                Console.WriteLine("" + scores[i]);
+                Console.WriteLine(i + ": " + scores[i]);
             }
 
             float max = scores.Max();
+            Console.WriteLine(max);
             int[] idx = scores.Select((v, i) => (v, i))
                          .Where(t => t.v == max)
                          .Select(t => t.i)
                          .ToArray();
             foreach (int index in idx)
             {
+                Console.WriteLine(index);
                 winners.Add(players[index]);
             }
 
