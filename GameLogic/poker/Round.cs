@@ -48,11 +48,11 @@ namespace PokerServer.GameLogic.poker
 
             //_players.RemoveAll(p => p.Money < betSize / 2);
 
-            int bet = Math.Max(_players[^1].Money, betSize);
+            int bet = Math.Min(_players[^1].Money, betSize);
             _players[^1].Bet = bet;
             _players[^1].Money -= bet;
             Pot += bet;
-            bet = Math.Max(_players[^2].Money, betSize / 2);
+            bet = Math.Min(_players[^2].Money, betSize / 2);
             _players[^2].Bet = bet;
             _players[^2].Money -= bet;
             Pot += bet;
