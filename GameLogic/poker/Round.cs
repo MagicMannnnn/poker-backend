@@ -1,0 +1,158 @@
+using System.Threading.Tasks;
+
+namespace PokerServer.GameLogic.poker
+{
+    public class Round
+    {
+        private Deck _deck;
+        private readonly List<Player> _players;
+        private int _playerIndex = 0;
+        private int _cycles = 0;
+        private int _cycle_start_index;
+        private int _starting_cycle_start_index;
+        public List<Card> board { get; } = new List<Card>();
+
+        public int Pot { get; set; } = 0;
+
+        public int betSize { get; set; } = 0;
+
+        public Round(List<Player> players, int startIndex = 0)
+        {
+            _players = players;
+            _deck = new Deck();
+            _cycle_start_index = startIndex;
+            _playerIndex = _cycle_start_index;
+            _starting_cycle_start_index = _cycle_start_index;
+        }
+
+        public void startRound()
+        {
+            betSize = 20;
+            _deck.Reset();
+            _deck.Shuffle();
+            _deck.Shuffle();
+            foreach (Player p in _players)
+            {
+                p.setHand(_deck.Pop(), _deck.Pop());
+            }
+
+            _players[^1].Bet = betSize;
+            _players[^1].Money -= betSize;
+            Pot += betSize;
+            _players[^2].Bet = betSize / 2;
+            _players[^2].Money -= betSize / 2;
+            Pot += betSize / 2;
+
+        }
+
+        public string getCurrentPlayerId()
+        {
+            return _players[_playerIndex].Id;
+        }
+
+        public bool doAction(string action, int amount)
+        {
+            switch (action)
+            {
+                case "fold":
+                    _players[_playerIndex].isPlaying = false;
+                    _playerIndex++;
+                    return true;
+                case "check":
+                    if (betSize > 0) //call
+                    {
+                        if (betSize <= _players[_playerIndex].Money)
+                        {
+                            int diff = betSize - _players[_playerIndex].Bet;
+                            _players[_playerIndex].Bet = betSize;
+                            _players[_playerIndex].Money -= diff;
+                            Pot += diff;
+                            _playerIndex++;
+                            return true;
+                        }
+                        return false;
+                    }
+                    Console.WriteLine("checking...");
+                    _playerIndex++;
+                    return true;
+                case "bet":
+                    if (amount <= _players[_playerIndex].Money && amount + _players[_playerIndex].Bet > betSize)
+                    {
+                        _cycle_start_index = _playerIndex;
+                        betSize = amount +  _players[_playerIndex].Bet;
+                        _players[_playerIndex].Bet = betSize;
+                        _players[_playerIndex].Money -= amount;
+                        Pot += amount;
+                        _playerIndex++;
+                        return true;
+                    }
+                    return false;
+                default:
+                    return false;
+
+
+            }
+        }
+
+        public async Task<bool> endCycle(Func<Task> BroadcastStateAsync, Func<object, Task> BroadcastAsync)
+        {
+            Console.WriteLine("Player Index A: " + _playerIndex);
+            _playerIndex %= _players.Count;
+            Console.WriteLine("Player Index B: " + _playerIndex);
+            if (_playerIndex == _cycle_start_index)
+            {
+                foreach (Player p in _players)
+                {
+                    p.Bet = 0;
+                }
+                betSize = 0;
+                _playerIndex = _starting_cycle_start_index;
+                _cycles++;
+                if (_cycles == 1)
+                {
+                    board.Add(_deck.Pop());
+                    board.Add(_deck.Pop());
+                    board.Add(_deck.Pop());
+                }
+                else if (_cycles == 2)
+                {
+                    board.Add(_deck.Pop());
+                }
+                else if (_cycles == 3)
+                {
+                    board.Add(_deck.Pop());
+                }
+                else if (_cycles == 4)
+                {
+                    await endRound(BroadcastStateAsync, BroadcastAsync);
+                }
+                return true;
+            }
+            return false;
+        }
+
+        private async Task endRound(Func<Task> BroadcastStateAsync, Func<object, Task> BroadcastAsync)
+        {
+            await BroadcastStateAsync();
+            await Task.Delay(2000);
+            Player winner = getWinner();
+            winner.Money += Pot;
+            Pot = 0;
+            _starting_cycle_start_index = 0;
+            _cycle_start_index = 0;
+            Player end = _players[^1];
+            _players.RemoveAt(_players.Count - 1);
+            _players.Insert(0, end);
+            await BroadcastStateAsync();
+            await Task.Delay(2000);
+            board.Clear();
+            startRound();
+            await BroadcastAsync(new { type = "update", currentBet = betSize});
+        }
+        
+        private Player getWinner()
+        {
+            return _players[_cycle_start_index];
+        }
+    }
+}
