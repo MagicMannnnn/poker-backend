@@ -39,16 +39,23 @@ namespace PokerServer.GameLogic.poker
             {
                 p.isPlaying = true;
                 p.setHand(_deck.Pop(), _deck.Pop());
+                if (p.Money <= 0)
+                {
+                    p.isPlaying = false;
+                }
             }
 
-            _players.RemoveAll(p => p.Money < betSize / 2);
 
-            _players[^1].Bet = betSize;
-            _players[^1].Money -= betSize;
-            Pot += betSize;
-            _players[^2].Bet = betSize / 2;
-            _players[^2].Money -= betSize / 2;
-            Pot += betSize / 2;
+            //_players.RemoveAll(p => p.Money < betSize / 2);
+
+            int bet = Math.Max(_players[^1].Money, betSize);
+            _players[^1].Bet = bet;
+            _players[^1].Money -= bet;
+            Pot += bet;
+            bet = Math.Max(_players[^2].Money, betSize / 2);
+            _players[^2].Bet = bet;
+            _players[^2].Money -= bet;
+            Pot += bet;
 
         }
 
@@ -206,7 +213,7 @@ namespace PokerServer.GameLogic.poker
             _starting_cycle_start_index = 0;
             _cycle_start_index = 0;
             await BroadcastStateAsync();
-            await Task.Delay(2000);
+            await Task.Delay(15000);
             Player end = _players[^1];
             _players.RemoveAt(_players.Count - 1);
             _players.Insert(0, end);
