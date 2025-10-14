@@ -15,7 +15,7 @@ namespace PokerServer.GameLogic
 
         public string[] hand { get; }
         public Card[] realhand { get; }
-        public bool isPlaying { get; set; } = true;
+        public bool isPlaying { get; set; } = false;
 
         private readonly System.Net.WebSockets.WebSocket _socket;
 
