@@ -15,7 +15,7 @@ namespace PokerServer.GameLogic.poker
 
             _board = board;
 
-            float[] highCardScores = new float[players.Count];
+            float[] scores = new float[players.Count];
 
             for (int i = 0; i < players.Count; i++)
             {
@@ -25,13 +25,13 @@ namespace PokerServer.GameLogic.poker
                 float best = 0;
                 foreach (var setOfFive in ComboUtil.KCombinations(cards, 5))
                 {
-                    best = Math.Max(best, getHighCard(setOfFive));
+                    best = Math.Max(best, getHighCard(setOfFive) + getPair(setOfFive));
                 }
-                highCardScores[i] = best;
+                scores[i] = best;
             }
 
-            float max = highCardScores.Max();
-            int[] idx = highCardScores.Select((v, i) => (v, i))
+            float max = scores.Max();
+            int[] idx = scores.Select((v, i) => (v, i))
                          .Where(t => t.v == max)
                          .Select(t => t.i)
                          .ToArray();
@@ -52,6 +52,22 @@ namespace PokerServer.GameLogic.poker
                 bestValue = Math.Max(bestValue, card.Value);
             }
             return (float)(bestValue / 15f);
+        }
+
+        private static float getPair(Card[] cards)
+        {
+            int bestValue = 0;
+            foreach (Card card in cards)
+            {
+                foreach (Card card2 in cards)
+                {
+                    if (card.Value == card2.Value)
+                    {
+                        bestValue = Math.Max(bestValue, card.Value);
+                    }
+                }
+            }
+            return (float)(bestValue * 10 / 15f);
         }
     }
 

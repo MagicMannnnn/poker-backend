@@ -51,7 +51,7 @@ namespace PokerServer.GameLogic
             _round = new Round(_players);
             _round.startRound();
             await BroadcastAsync(new { type = "yourTurn", playerId = _round.getCurrentPlayerId() });
-            await BroadcastAsync(new { type = "update", currentBet = _round.betSize});
+            await BroadcastAsync(new { type = "update", currentBet = _round.betSize });
             await BroadcastStateAsync();
         }
 
@@ -71,14 +71,14 @@ namespace PokerServer.GameLogic
                             await BroadcastAsync(new { type = "deal", board = _round.board.Select(c => c.ToString()).ToArray(), pot = _round.Pot });
                         }
                         await BroadcastAsync(new { type = "yourTurn", playerId = _round.getCurrentPlayerId() });
-                        await BroadcastAsync(new { type = "update", currentBet = _round.betSize});
+                        await BroadcastAsync(new { type = "update", currentBet = _round.betSize });
                         await BroadcastStateAsync();
                     }
-                    
+
                 }
-                
+
             }
-            
+
         }
 
         private async Task BroadcastStateAsync()
@@ -96,16 +96,18 @@ namespace PokerServer.GameLogic
                     hand = started && p.Id == player.Id ? p.hand : null
                 }).ToArray();
 
-                var payload = new { type = "playerList", players, youId = player.Id };
+                var rotPlayers = RotateRight(players, _round.totalRounds);
+
+                var payload = new { type = "playerList", rotPlayers, youId = player.Id };
                 await player.SendAsync(payload);
             }
         }
-        
+
         private async Task BroadcastStateAsyncShowCards()
         {
             foreach (var player in _players)
             {
-                
+
                 var players = _players.Select(p => new
                 {
                     id = p.Id,
@@ -116,7 +118,9 @@ namespace PokerServer.GameLogic
                     hand = p.hand
                 }).ToArray();
 
-                var payload = new { type = "playerList", players, youId = player.Id };
+                var rotPlayers = RotateRight(players, _round.totalRounds);
+
+                var payload = new { type = "playerList", rotPlayers, youId = player.Id };
                 await player.SendAsync(payload);
             }
         }
@@ -126,5 +130,23 @@ namespace PokerServer.GameLogic
             foreach (var p in _players)
                 await p.SendAsync(msg);
         }
+
+
+        private static T[] RotateRight<T>(T[] a, int offset)
+        {
+            offset = -offset;
+            if (a == null) throw new ArgumentNullException(nameof(a));
+            int n = a.Length;
+            if (n == 0) return Array.Empty<T>();
+
+            int k = ((offset % n) + n) % n;        // normalize to [0, n)
+            if (k == 0) return (T[])a.Clone();
+
+            var res = new T[n];
+            Array.Copy(a, k, res, 0, n - k);       // tail to front
+            Array.Copy(a, 0, res, n - k, k);       // head to end
+            return res;
+        }
+
     }
 }
