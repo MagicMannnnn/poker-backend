@@ -29,6 +29,7 @@ namespace PokerServer.GameLogic.poker
         {
             RankHand.winner = null;
             betSize = 20;
+            _cycles = 0;
             _deck.Reset();
             _deck.Shuffle();
             _deck.Shuffle();
