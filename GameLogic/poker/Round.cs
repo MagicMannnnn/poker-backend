@@ -128,6 +128,11 @@ namespace PokerServer.GameLogic.poker
             }else
             {
                 RankHand.winner = null;
+                while (!_players[_playerIndex].isPlaying)
+                {
+                    _playerIndex++;
+                    _playerIndex %= _players.Count;
+                }
             }
             if (_playerIndex == _cycle_start_index)
             {
