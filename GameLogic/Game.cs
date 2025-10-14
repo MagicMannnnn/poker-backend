@@ -67,6 +67,7 @@ namespace PokerServer.GameLogic
                         await BroadcastStateAsync();
                         if (await _round.endCycle(BroadcastStateAsyncShowCards, BroadcastAsync))
                         {
+                            await _round.endCycle(BroadcastStateAsyncShowCards, BroadcastAsync);
                             await Task.Delay(500);
                             await BroadcastAsync(new { type = "deal", board = _round.board.Select(c => c.ToString()).ToArray(), pot = _round.Pot });
                         }
