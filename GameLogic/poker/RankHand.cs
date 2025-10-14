@@ -60,10 +60,12 @@ namespace PokerServer.GameLogic.poker
         private static float getPair(Card[] cards)
         {
             int bestValue = 0;
-            foreach (Card card in cards)
+            for (int i = 0; i < cards.Length; i++)
             {
-                foreach (Card card2 in cards)
+                Card card = cards[i];
+                for (int j = i + 1; j < cards.Length; j++)
                 {
+                    Card card2 = cards[j];
                     if (card.Value == card2.Value)
                     {
                         bestValue = Math.Max(bestValue, card.Value);
