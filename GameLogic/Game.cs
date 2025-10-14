@@ -135,6 +135,7 @@ namespace PokerServer.GameLogic
 
         private static T[] RotateRight<T>(T[] a, int offset)
         {
+            offset = -offset;
             if (a == null) throw new ArgumentNullException(nameof(a));
             int n = a.Length;
             if (n <= 1) return (T[])a.Clone();
