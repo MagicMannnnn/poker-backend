@@ -25,7 +25,8 @@ namespace PokerServer.GameLogic.poker
                 float best = 0;
                 foreach (var setOfFive in ComboUtil.KCombinations(cards, 5))
                 {
-                    best = Math.Max(best, getHighCard(setOfFive) + getPair(setOfFive) + getTOAK(setOfFive) + getStraight(setOfFive) + getFlush(setOfFive) + getFH(setOfFive) + getFOAK(setOfFive) + getStraightFlush(setOfFive));
+                    float highCard = getHighCard(players[i].realhand);
+                    best = Math.Max(best, highCard + getPair(setOfFive) + getTOAK(setOfFive) + getStraight(setOfFive) + getFlush(setOfFive) + getFH(setOfFive) + getFOAK(setOfFive) + getStraightFlush(setOfFive));
                 }
                 scores[i] = best;
                 Console.WriteLine(i + ": " + scores[i]);

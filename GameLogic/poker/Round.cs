@@ -225,7 +225,15 @@ namespace PokerServer.GameLogic.poker
         
         private List<Player> getWinner()
         {
-            return RankHand.getwinners(_players, board);
+            List<Player> canWin = new List<Player>();
+            foreach (var player in _players)
+            {
+                if (player.isPlaying)
+                {
+                    canWin.Add(player);
+                }
+            }
+            return RankHand.getwinners(canWin, board);
         }
     }
 }
