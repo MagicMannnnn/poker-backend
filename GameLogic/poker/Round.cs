@@ -235,6 +235,10 @@ namespace PokerServer.GameLogic.poker
                     canWin.Add(player);
                 }
             }
+            while (board.Count < 5)
+            {
+                board.Add(_deck.Pop());
+            }
             return RankHand.getwinners(canWin, board);
         }
     }
