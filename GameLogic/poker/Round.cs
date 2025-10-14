@@ -70,9 +70,15 @@ namespace PokerServer.GameLogic.poker
                             _players[_playerIndex].Money -= diff;
                             Pot += diff;
                             _playerIndex++;
-                            return true;
                         }
-                        return false;
+                        else
+                        {
+                            _players[_playerIndex].Bet += _players[_playerIndex].Money;
+                            Pot +=  _players[_playerIndex].Money;
+                            _players[_playerIndex].Money = 0;
+                            _playerIndex++;
+                        }
+                        return true;
                     }
                     Console.WriteLine("checking...");
                     _playerIndex++;
