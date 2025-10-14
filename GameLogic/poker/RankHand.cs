@@ -67,7 +67,7 @@ namespace PokerServer.GameLogic.poker
                     }
                 }
             }
-            return (float)(bestValue * 10 / 15f);
+            return bestValue == 0 ? 0 : 10 + (float)(bestValue / 15f);
         }
     }
 
