@@ -25,7 +25,7 @@ namespace PokerServer.GameLogic.poker
                 float best = 0;
                 foreach (var setOfFive in ComboUtil.KCombinations(cards, 5))
                 {
-                    best = Math.Max(best, getHighCard(setOfFive) + getPair(setOfFive));
+                    best = Math.Max(best, getHighCard(setOfFive) + getPair(setOfFive) + getTOAK(setOfFive) + getStraight(setOfFive) + getFlush(setOfFive) + getFH(setOfFive) + getFOAK(setOfFive) + getStraightFlush(setOfFive));
                 }
                 scores[i] = best;
                 Console.WriteLine(i + ": " + scores[i]);
@@ -74,6 +74,131 @@ namespace PokerServer.GameLogic.poker
             }
             return bestValue == 0 ? 0 : 10 + (float)(bestValue / 15f);
         }
+
+
+        private static float getTOAK(Card[] cards)
+        {
+            int bestValue = 0;
+            for (int i = 0; i < cards.Length; i++)
+            {
+                Card card = cards[i];
+                for (int j = i + 1; j < cards.Length; j++)
+                {
+                    Card card2 = cards[j];
+                    for (int k = j + 1; k < cards.Length; k++)
+                    {
+                        Card card3 = cards[k];
+                        if (card.Value == card2.Value && card2.Value == card3.Value)
+                        {
+                            bestValue = Math.Max(bestValue, card.Value);
+                        }
+                    }
+                }
+            }
+            return bestValue == 0 ? 0 : 100 + (float)(bestValue / 15f);
+        }
+
+
+        private static float getStraight(Card[] cards)
+        {
+            Array.Sort(cards, (a, b) => a.Value.CompareTo(b.Value));
+
+            int prevValue = cards[0].Value;
+            for (int i = 1; i < cards.Length; i++)
+            {
+                if (cards[i].Value == prevValue + 1)
+                {
+                    prevValue++;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            return 1000 + (float)(prevValue / 15f);
+        }
+        
+        private static float getFlush(Card[] cards)
+        {
+            String prevSuit = cards[0].Suit;
+            for (int i = 1; i < cards.Length; i++)
+            {
+                if (!(cards[i].Suit == prevSuit))
+                {
+                    return 0;
+                }
+            }
+            Array.Sort(cards, (a, b) => b.Value.CompareTo(a.Value));
+            return 10000 + (float)(cards[0].Value / 15f); 
+        }
+
+        private static float getFH(Card[] cards)
+        {
+            int bestValue = 0;
+            for (int i = 0; i < cards.Length; i++)
+            {
+                Card card = cards[i];
+                for (int j = i + 1; j < cards.Length; j++)
+                {
+                    Card card2 = cards[j];
+                    for (int k = j + 1; k < cards.Length; k++)
+                    {
+                        Card card3 = cards[k];
+                        if (card.Value == card2.Value && card2.Value == card3.Value)
+                        {
+                            bestValue = Math.Max(bestValue, card.Value);
+                            Card[] TOAKCards = { card, card2, card3 };
+                            Card[] newCards = (Card[])cards.Clone();
+                            newCards.Except(TOAKCards);
+                            if (getPair(newCards) > 0)
+                            {
+                                Array.Sort(cards, (a, b) => b.Value.CompareTo(a.Value));
+                                return 100000 + (float)(cards[0].Value / 15f);
+                            }
+                            return 0;
+                        }
+                    }
+                }
+            }
+            return 0;
+        }
+        
+
+        private static float getFOAK(Card[] cards)
+        {
+            int bestValue = 0;
+            for (int i = 0; i < cards.Length; i++)
+            {
+                Card card = cards[i];
+                for (int j = i + 1; j < cards.Length; j++)
+                {
+                    Card card2 = cards[j];
+                    for (int k = j + 1; k < cards.Length; k++)
+                    {
+                        Card card3 = cards[k];
+                        for (int l = k + 1; l < cards.Length; l++)
+                    {
+                        Card card4 = cards[l];
+                        if (card.Value == card2.Value && card2.Value == card3.Value && card3.Value == card4.Value)
+                        {
+                            bestValue = Math.Max(bestValue, card.Value);
+                        }
+                    }
+                    }
+                }
+            }
+            return bestValue == 0 ? 0 : 1000000 + (float)(bestValue / 15f);
+        }
+
+        private static float getStraightFlush(Card[] cards)
+        {
+            if (getStraight(cards) > 0 && getFlush(cards) > 0)
+            {
+                return 10000000 + getStraight(cards);
+            }
+            return 0;
+        }
+
     }
 
 }
