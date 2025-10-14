@@ -83,32 +83,40 @@ namespace PokerServer.GameLogic
 
         private async Task BroadcastStateAsync()
         {
-            foreach (var player in _players)
-            {
+            Player[] targets;
+            // snapshot the players once, under the lock
+            lock (_lock)
+                targets = _players.ToArray();
 
-                var players = _players.Select(p => new
+            foreach (var recipient in targets)
+            {
+                // project *from the same snapshot*
+                var players = targets.Select(p => new
                 {
                     id = p.Id,
                     name = p.Name,
                     money = p.Money,
                     betAmount = p.Bet,
                     isHost = p.IsHost,
-                    hand = started && p.Id == player.Id ? p.hand : null
+                    hand = started && p.Id == recipient.Id ? p.hand : null
                 }).ToArray();
 
-                var rotPlayers = RotateRight(players, _round.totalRounds);
+                var rotPlayers = RotateRight(players, _round?.totalRounds ?? 0);
 
-                var payload = new { type = "playerList", rotPlayers, youId = player.Id };
-                await player.SendAsync(payload);
+                var payload = new { type = "playerList", players = rotPlayers, youId = recipient.Id };
+                await recipient.SendAsync(payload);
             }
         }
 
         private async Task BroadcastStateAsyncShowCards()
         {
-            foreach (var player in _players)
-            {
+            Player[] targets;
+            lock (_lock)
+                targets = _players.ToArray();
 
-                var players = _players.Select(p => new
+            foreach (var recipient in targets)
+            {
+                var players = targets.Select(p => new
                 {
                     id = p.Id,
                     name = p.Name,
@@ -118,12 +126,28 @@ namespace PokerServer.GameLogic
                     hand = p.hand
                 }).ToArray();
 
-                var rotPlayers = RotateRight(players, _round.totalRounds);
+                var rotPlayers = RotateRight(players, _round?.totalRounds ?? 0);
 
-                var payload = new { type = "playerList", rotPlayers, youId = player.Id };
-                await player.SendAsync(payload);
+                var payload = new { type = "playerList", players = rotPlayers, youId = recipient.Id };
+                await recipient.SendAsync(payload);
             }
         }
+
+        private static T[] RotateRight<T>(T[] a, int offset)
+        {
+            if (a == null) throw new ArgumentNullException(nameof(a));
+            int n = a.Length;
+            if (n <= 1) return (T[])a.Clone();
+
+            int k = ((offset % n) + n) % n; // normalize to [0,n)
+            if (k == 0) return (T[])a.Clone();
+
+            var res = new T[n];
+            Array.Copy(a, n - k, res, 0, k);   // last k -> front
+            Array.Copy(a, 0, res, k, n - k); // rest after
+            return res;
+        }
+
 
         private async Task BroadcastAsync(object msg)
         {
@@ -132,21 +156,6 @@ namespace PokerServer.GameLogic
         }
 
 
-        private static T[] RotateRight<T>(T[] a, int offset)
-        {
-            offset = -offset;
-            if (a == null) throw new ArgumentNullException(nameof(a));
-            int n = a.Length;
-            if (n == 0) return Array.Empty<T>();
-
-            int k = ((offset % n) + n) % n;        // normalize to [0, n)
-            if (k == 0) return (T[])a.Clone();
-
-            var res = new T[n];
-            Array.Copy(a, k, res, 0, n - k);       // tail to front
-            Array.Copy(a, 0, res, n - k, k);       // head to end
-            return res;
-        }
 
     }
 }
