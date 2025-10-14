@@ -109,6 +109,13 @@ namespace PokerServer.GameLogic.poker
 
         public async Task<bool> endCycle(Func<Task> BroadcastStateAsync, Func<object, Task> BroadcastAsync)
         {
+            foreach (var player in _players)
+            {
+                if (player.Money == 0)
+                {
+                    player.isPlaying = false;
+                }
+            }
             _playerIndex %= _players.Count;
             int counter = 0;
             foreach (Player p in _players)
