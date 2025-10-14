@@ -27,6 +27,7 @@ namespace PokerServer.GameLogic.poker
 
         public void startRound()
         {
+            RankHand.winner = null;
             betSize = 20;
             _deck.Reset();
             _deck.Shuffle();
@@ -104,12 +105,18 @@ namespace PokerServer.GameLogic.poker
                 if (!p.isPlaying)
                 {
                     counter++;
+                }else
+                {
+                    RankHand.winner = p; //if everyone else folded
                 }
             }
             if (counter == _players.Count - 1)
             {
                 _cycles = 4;
                 _playerIndex = _cycle_start_index;
+            }else
+            {
+                RankHand.winner = null;
             }
             if (_playerIndex == _cycle_start_index)
             {
@@ -147,8 +154,12 @@ namespace PokerServer.GameLogic.poker
         {
             await BroadcastStateAsync();
             await Task.Delay(2000);
-            Player winner = getWinner();
-            winner.Money += Pot;
+            List<Player> winners = getWinner();
+            foreach(Player p in winners)
+            {
+                p.Money += Pot / winners.Count;
+            }
+            
             Pot = 0;
             _starting_cycle_start_index = 0;
             _cycle_start_index = 0;
@@ -162,9 +173,9 @@ namespace PokerServer.GameLogic.poker
             await BroadcastAsync(new { type = "update", currentBet = betSize});
         }
         
-        private Player getWinner()
+        private List<Player> getWinner()
         {
-            return _players[_cycle_start_index];
+            return RankHand.getwinners(_players, board);
         }
     }
 }
