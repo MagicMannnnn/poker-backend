@@ -38,6 +38,8 @@ namespace PokerServer.GameLogic.poker
                 p.setHand(_deck.Pop(), _deck.Pop());
             }
 
+            _players.RemoveAll(p => p.Money < betSize / 2);
+
             _players[^1].Bet = betSize;
             _players[^1].Money -= betSize;
             Pot += betSize;
@@ -132,6 +134,7 @@ namespace PokerServer.GameLogic.poker
                 }
                 betSize = 0;
                 _playerIndex = _starting_cycle_start_index;
+                _cycle_start_index = _starting_cycle_start_index;
                 _cycles++;
                 if (_cycles == 1)
                 {
