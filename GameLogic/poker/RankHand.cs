@@ -2,14 +2,13 @@ namespace PokerServer.GameLogic.poker
 {
     public class RankHand
     {
-        public static Player? winner {get; set; }
+        public static Player? winner { get; set; }
         private static List<Card> _board;
         public static List<Player> getwinners(List<Player> players, List<Card> board)
         {
-
+            List<Player> winners = new List<Player>();
             if (winner != null)
             {
-                List<Player> winners = new List<Player>();
                 winners.Add(winner);
                 return winners;
             }
@@ -20,16 +19,39 @@ namespace PokerServer.GameLogic.poker
 
             for (int i = 0; i < players.Count; i++)
             {
-                //highCardScores[i] = players[i].score;
+                List<Card> cards = new List<Card>();
+                cards.AddRange(_board);
+                cards.AddRange(players[i].realhand);
+                float best = 0;
+                foreach (var setOfFive in ComboUtil.KCombinations(cards, 5))
+                {
+                    best = Math.Max(best, getHighCard(setOfFive));
+                }
+                highCardScores[i] = best;
             }
 
-            return players;
-        }
-        
+            float max = highCardScores.Max();
+            int[] idx = highCardScores.Select((v, i) => (v, i))
+                         .Where(t => t.v == max)
+                         .Select(t => t.i)
+                         .ToArray();
+            foreach (int index in idx)
+            {
+                winners.Add(players[index]);
+            }
 
-        private static float getHighCard()
+            return winners;
+        }
+
+
+        private static float getHighCard(Card[] cards)
         {
-            return 0;
+            int bestValue = 0;
+            foreach (Card card in cards)
+            {
+                bestValue = Math.Max(bestValue, card.Value);
+            }
+            return (float)(bestValue / 15f);
         }
     }
 

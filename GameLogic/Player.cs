@@ -14,6 +14,7 @@ namespace PokerServer.GameLogic
         public bool IsHost { get; }
 
         public string[] hand { get; }
+        public Card[] realhand { get; }
         public bool isPlaying { get; set; } = true;
 
         private readonly System.Net.WebSockets.WebSocket _socket;
@@ -25,6 +26,7 @@ namespace PokerServer.GameLogic
             Name = name;
             _socket = socket;
             IsHost = isHost;
+            realhand = new Card[2];
             hand = new string[2];
         }
 
@@ -32,6 +34,8 @@ namespace PokerServer.GameLogic
         {
             hand[0] = c1.ToString();
             hand[1] = c2.ToString();
+            realhand[0] = c1;
+            realhand[1] = c2;
         }
 
         public async Task SendAsync(object obj)
