@@ -99,17 +99,17 @@ namespace PokerServer.GameLogic.poker
         {
             _playerIndex %= _players.Count;
             int counter = 0;
-            while (!_players[_playerIndex].isPlaying)
+            foreach (Player p in _players)
             {
-                _playerIndex++;
-                _playerIndex %= _players.Count;
-                counter++;
-                if (counter == _players.Count - 1)
+                if (!p.isPlaying)
                 {
-                    _cycles = 4;
-                    _playerIndex = _cycle_start_index;
-                    break;
+                    counter++;
                 }
+            }
+            if (counter == _players.Count - 1)
+            {
+                _cycles = 4;
+                _playerIndex = _cycle_start_index;
             }
             if (_playerIndex == _cycle_start_index)
             {
