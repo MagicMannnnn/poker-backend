@@ -28,6 +28,7 @@ namespace PokerServer.GameLogic.poker
                     best = Math.Max(best, getHighCard(setOfFive) + getPair(setOfFive));
                 }
                 scores[i] = best;
+                Console.WriteLine("" + scores[i]);
             }
 
             float max = scores.Max();
