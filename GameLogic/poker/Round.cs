@@ -112,7 +112,7 @@ namespace PokerServer.GameLogic.poker
             }
             if (counter == _players.Count - 1)
             {
-                _cycles = 4;
+                _cycles = 3;
                 _playerIndex = _cycle_start_index;
             }else
             {
