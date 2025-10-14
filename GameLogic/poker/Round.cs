@@ -38,15 +38,17 @@ namespace PokerServer.GameLogic.poker
             foreach (Player p in _players)
             {
                 p.isPlaying = true;
-                p.setHand(_deck.Pop(), _deck.Pop());
                 if (p.Money <= 0)
                 {
                     p.isPlaying = false;
+                }else
+                {
+                    p.setHand(_deck.Pop(), _deck.Pop());
                 }
             }
 
 
-            //_players.RemoveAll(p => p.Money < betSize / 2);
+            _players.RemoveAll(p => p.Money < betSize / 2);
 
             int bet = Math.Min(_players[^1].Money, betSize);
             _players[^1].Bet = bet;
