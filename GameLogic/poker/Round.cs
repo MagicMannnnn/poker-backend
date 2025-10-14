@@ -63,9 +63,9 @@ namespace PokerServer.GameLogic.poker
                 case "check":
                     if (betSize > 0) //call
                     {
-                        if (betSize <= _players[_playerIndex].Money)
+                        int diff = betSize - _players[_playerIndex].Bet;
+                        if (diff <= _players[_playerIndex].Money)
                         {
-                            int diff = betSize - _players[_playerIndex].Bet;
                             _players[_playerIndex].Bet = betSize;
                             _players[_playerIndex].Money -= diff;
                             Pot += diff;
@@ -81,7 +81,7 @@ namespace PokerServer.GameLogic.poker
                     if (amount <= _players[_playerIndex].Money && amount + _players[_playerIndex].Bet > betSize)
                     {
                         _cycle_start_index = _playerIndex;
-                        betSize = amount +  _players[_playerIndex].Bet;
+                        betSize = amount + _players[_playerIndex].Bet;
                         _players[_playerIndex].Bet = betSize;
                         _players[_playerIndex].Money -= amount;
                         Pot += amount;
