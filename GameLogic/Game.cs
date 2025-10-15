@@ -75,10 +75,10 @@ namespace PokerServer.GameLogic
                             await Task.Delay(500);
                             await BroadcastAsync(new { type = "deal", board = _round.board.Select(c => c.ToString()).ToArray(), pot = _round.Pot });
                         }
+                        await BroadcastAsync(new { type = "yourTurn", playerId = _round.getCurrentPlayerId() });
+                        await BroadcastAsync(new { type = "update", currentBet = _round.betSize });
                         if (prevRound == _round.totalRounds)
                         {
-                            await BroadcastAsync(new { type = "yourTurn", playerId = _round.getCurrentPlayerId() });
-                            await BroadcastAsync(new { type = "update", currentBet = _round.betSize });
                             await BroadcastStateAsync();
                         }
                         
