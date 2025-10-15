@@ -48,8 +48,12 @@ namespace PokerServer.GameLogic
             started = true;
             await BroadcastAsync(new { type = "gameStarted" });
 
-            _round = new Round(_players);
+            if (_round == null)
+            {
+                _round = new Round(_players);
+            }
             _round.startRound();
+            await BroadcastAsync(new { type = "deal", board = _round.board.Select(c => c.ToString()).ToArray(), pot = _round.Pot });
             await BroadcastAsync(new { type = "yourTurn", playerId = _round.getCurrentPlayerId() });
             await BroadcastAsync(new { type = "update", currentBet = _round.betSize });
             await BroadcastStateAsync();

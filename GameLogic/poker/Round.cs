@@ -12,11 +12,11 @@ namespace PokerServer.GameLogic.poker
         private int _starting_cycle_start_index;
         public List<Card> board { get; } = new List<Card>();
 
-        public int Pot { get; set; } = 0;
+        public int Pot { get; private set; } = 0;
 
-        public int betSize { get; set; } = 0;
+        public int betSize { get; private set; } = 0;
 
-        public int totalRounds { get; set; } = 0;
+        public int totalRounds { get; private set; } = 0;
 
         public Round(List<Player> players, int startIndex = 0)
         {
@@ -32,6 +32,7 @@ namespace PokerServer.GameLogic.poker
             RankHand.winner = null;
             betSize = 20;
             _cycles = 0;
+            board.Clear();
             _deck.Reset();
             _deck.Shuffle();
             _deck.Shuffle();
@@ -215,13 +216,14 @@ namespace PokerServer.GameLogic.poker
             _starting_cycle_start_index = 0;
             _cycle_start_index = 0;
             await BroadcastStateAsync();
-            await Task.Delay(15000);
+            await Task.Delay(2000);
             Player end = _players[^1];
             _players.RemoveAt(_players.Count - 1);
             _players.Insert(0, end);
-            board.Clear();
-            startRound();
+            //board.Clear();
+            //startRound();
             await BroadcastAsync(new { type = "update", currentBet = betSize });
+            await BroadcastAsync(new { type = "pause"});
             totalRounds++;
         }
         
