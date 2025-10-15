@@ -32,6 +32,8 @@ namespace PokerServer.GameLogic.poker
             RankHand.winner = null;
             betSize = 20;
             _cycles = 0;
+            _starting_cycle_start_index = 0;
+            _cycle_start_index = 0;
             board.Clear();
             _deck.Reset();
             _deck.Shuffle();
