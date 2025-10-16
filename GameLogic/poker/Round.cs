@@ -1,249 +1,231 @@
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace PokerServer.GameLogic.poker
 {
     public class Round
     {
-        private Deck _deck;
         private readonly List<Player> _players;
+        private readonly Deck _deck = new();
+        private int _dealerIndex = 0;
         private int _playerIndex = 0;
-        private int _cycles = 0;
-        private int _cycle_start_index;
-        private int _starting_cycle_start_index;
-        public List<Card> board { get; } = new List<Card>();
-
+        private int _lastAggressorIndex = -1; // index of player who last raised/bet in this betting round
+        private int _street = 0; // 0 preflop, 1 flop, 2 turn, 3 river
+        public List<Card> board { get; } = new();
         public int Pot { get; private set; } = 0;
-
         public int betSize { get; private set; } = 0;
-
         public int totalRounds { get; private set; } = 0;
 
-        public Round(List<Player> players, int startIndex = 0)
+        private const int SmallBlind = 10;
+        private const int BigBlind = 20;
+
+        public Round(List<Player> players, int dealerIndex = 0)
         {
             _players = players;
-            _deck = new Deck();
-            _cycle_start_index = startIndex;
-            _playerIndex = _cycle_start_index;
-            _starting_cycle_start_index = _cycle_start_index;
+            _dealerIndex = dealerIndex % Math.Max(1, players.Count);
         }
 
         public void startRound()
         {
             RankHand.winner = null;
-            betSize = 20;
-            _cycles = 0;
-            _starting_cycle_start_index = 0;
-            _cycle_start_index = 0;
+            Pot = 0;
+            betSize = 0;
             board.Clear();
             _deck.Reset();
             _deck.Shuffle();
-            _deck.Shuffle();
-            foreach (Player p in _players)
+
+            // reset player states & deal
+            foreach (var p in _players)
             {
-                p.isPlaying = true;
-                if (p.Money <= 0)
-                {
-                    p.isPlaying = false;
-                }else
-                {
+                p.Bet = 0;
+                p.isPlaying = p.Money > 0;
+                if (p.isPlaying)
                     p.setHand(_deck.Pop(), _deck.Pop());
-                }
             }
 
+            // remove broke players entirely
+            _players.RemoveAll(p => p.Money <= 0 && !p.isPlaying);
 
-            _players.RemoveAll(p => p.Money < betSize / 2);
+            // Post blinds (assumes >= 2 players)
+            if (_players.Count < 2) return;
 
-            int bet = Math.Min(_players[^1].Money, betSize);
-            _players[^1].Bet = bet;
-            _players[^1].Money -= bet;
-            Pot += bet;
-            bet = Math.Min(_players[^2].Money, betSize / 2);
-            _players[^2].Bet = bet;
-            _players[^2].Money -= bet;
-            Pot += bet;
+            int sbIndex = NextIndex(_dealerIndex);
+            int bbIndex = NextIndex(sbIndex);
 
+            PostBlind(sbIndex, SmallBlind);
+            PostBlind(bbIndex, BigBlind);
+            betSize = _players[bbIndex].Bet;
+
+            // Preflop: first to act is left of big blind
+            _playerIndex = NextIndex(bbIndex);
+            _lastAggressorIndex = bbIndex;
+            _street = 0;
         }
 
-        public string getCurrentPlayerId()
+        private void PostBlind(int idx, int amount)
         {
-            return _players[_playerIndex].Id;
+            var p = _players[idx];
+            int bet = Math.Min(p.Money, amount);
+            p.Money -= bet;
+            p.Bet += bet;
+            Pot += bet;
+            p.isPlaying = p.Money >= 0; // still active (can be all-in)
+        }
+
+        public string getCurrentPlayerId() => _players[_playerIndex].Id;
+
+        private int NextIndex(int i)
+        {
+            int n = _players.Count;
+            return n == 0 ? 0 : (i + 1) % n;
+        }
+
+        private void AdvanceToNextActive()
+        {
+            int n = _players.Count;
+            for (int step = 0; step < n; step++)
+            {
+                _playerIndex = (_playerIndex + 1) % n;
+                if (_players[_playerIndex].isPlaying) return;
+            }
         }
 
         public bool doAction(string action, int amount)
         {
+            var actor = _players[_playerIndex];
+            if (!actor.isPlaying) { AdvanceToNextActive(); return true; }
+
             switch (action)
             {
                 case "fold":
-                    _players[_playerIndex].isPlaying = false;
-                    _playerIndex++;
-                    return true;
+                    actor.isPlaying = false;
+                    return MoveAfterAction();
                 case "check":
-                    if (betSize > 0) //call
+                    // treat as call if there's a live bet against you
+                    int toCall = betSize - actor.Bet;
+                    if (toCall > 0)
                     {
-                        int diff = betSize - _players[_playerIndex].Bet;
-                        if (diff <= _players[_playerIndex].Money)
-                        {
-                            _players[_playerIndex].Bet = betSize;
-                            _players[_playerIndex].Money -= diff;
-                            Pot += diff;
-                            _playerIndex++;
-                        }
-                        else
-                        {
-                            _players[_playerIndex].Bet += _players[_playerIndex].Money;
-                            Pot +=  _players[_playerIndex].Money;
-                            _players[_playerIndex].Money = 0;
-                            _playerIndex++;
-                        }
-                        return true;
+                        // call
+                        int pay = Math.Min(toCall, actor.Money);
+                        actor.Money -= pay;
+                        actor.Bet += pay;
+                        Pot += pay;
                     }
-                    Console.WriteLine("checking...");
-                    _playerIndex++;
-                    return true;
+                    return MoveAfterAction();
                 case "bet":
-                    if (amount <= _players[_playerIndex].Money && amount + _players[_playerIndex].Bet > betSize)
-                    {
-                        _cycle_start_index = _playerIndex;
-                        betSize = amount + _players[_playerIndex].Bet;
-                        _players[_playerIndex].Bet = betSize;
-                        _players[_playerIndex].Money -= amount;
-                        Pot += amount;
-                        _playerIndex++;
-                        return true;
-                    }
-                    return false;
+                case "raise":
+                    int minRaise = Math.Max(BigBlind, betSize); // simplistic: at least current bet (you can refine)
+                    int desired = amount;
+                    int available = actor.Money;
+                    if (desired <= 0 || desired > available) return false;
+
+                    int newBetTotal = actor.Bet + desired;
+                    if (newBetTotal <= betSize) return false; // must increase
+
+                    actor.Money -= desired;
+                    actor.Bet = newBetTotal;
+                    Pot += desired;
+
+                    betSize = newBetTotal;
+                    _lastAggressorIndex = _playerIndex;
+
+                    AdvanceToNextActive();
+                    return true;
                 default:
                     return false;
-
-
             }
+        }
+
+        private bool MoveAfterAction()
+        {
+            // If only one player remains, fast-forward to showdown payout
+            if (_players.Count(p => p.isPlaying) == 1)
+            {
+                // Set the lone player as winner via RankHand.winner (used by getWinner)
+                RankHand.winner = _players.First(p => p.isPlaying);
+                // Force end of betting rounds and trigger endRound on next endCycle
+                _street = 3;
+                _playerIndex = _lastAggressorIndex; // so endCycle sees round complete
+                return true;
+            }
+
+            AdvanceToNextActive();
+            return true;
         }
 
         public async Task<bool> endCycle(Func<Task> BroadcastStateAsync, Func<object, Task> BroadcastAsync)
         {
-            foreach (var player in _players)
+            // betting round ends when the action returns to the last aggressor and
+            // all active players have matched betSize (or are all-in)
+            bool everyoneMatched = _players.Where(p => p.isPlaying)
+                                           .All(p => p.Bet == betSize || p.Money == 0);
+            if (_playerIndex == _lastAggressorIndex && everyoneMatched)
             {
-                if (player.Money == 0)
-                {
-                    player.isPlaying = false;
-                }
-            }
-            _playerIndex %= _players.Count;
-            int counter = 0;
-            foreach (Player p in _players)
-            {
-                if (!p.isPlaying)
-                {
-                    counter++;
-                }else
-                {
-                    RankHand.winner = p; //if everyone else folded
-                }
-            }
-            if (counter == _players.Count - 1)
-            {
-                _cycles = 3;
-                _playerIndex = _cycle_start_index;
-            }else
-            {
-                RankHand.winner = null;
-                while (!_players[_playerIndex].isPlaying)
-                {
-                    _playerIndex++;
-                    _playerIndex %= _players.Count;
-                }
-                while (!_players[_cycle_start_index].isPlaying)
-                {
-                    _cycle_start_index++;
-                    _cycle_start_index %= _players.Count;
-                }
-            }
-            if (_playerIndex == _cycle_start_index)
-            {
-                foreach (Player p in _players)
-                {
-                    p.Bet = 0;
-                }
+                // advance street
+                foreach (var p in _players) p.Bet = 0;
                 betSize = 0;
-                _playerIndex = _starting_cycle_start_index;
-                _cycle_start_index = _starting_cycle_start_index;
-                _cycles++;
-                if (_cycles == 1)
+                _lastAggressorIndex = -1;
+
+                _street++;
+                if (_street == 1)
                 {
+                    // flop (burn omitted in this simple model)
                     board.Add(_deck.Pop());
                     board.Add(_deck.Pop());
                     board.Add(_deck.Pop());
                 }
-                else if (_cycles == 2)
+                else if (_street == 2 || _street == 3)
                 {
                     board.Add(_deck.Pop());
                 }
-                else if (_cycles == 3)
-                {
-                    board.Add(_deck.Pop());
-                }
-                else if (_cycles == 4)
+                else if (_street >= 4)
                 {
                     await endRound(BroadcastStateAsync, BroadcastAsync);
+                    return true;
                 }
 
-                counter = 0;
+                // Next street: first to act is left of dealer
+                _playerIndex = NextIndex(_dealerIndex);
                 while (!_players[_playerIndex].isPlaying)
-                {
-                    _playerIndex++;
-                    _playerIndex %= _players.Count;
-                    counter++;
-                    if (counter == _players.Count)
-                    {
-                        break;
-                    }
-                }
+                    _playerIndex = NextIndex(_playerIndex);
 
+                _lastAggressorIndex = _playerIndex; // if everyone checks, round can end when pointer returns here
                 return true;
             }
+
             return false;
         }
 
         private async Task endRound(Func<Task> BroadcastStateAsync, Func<object, Task> BroadcastAsync)
         {
             await BroadcastStateAsync();
-            await Task.Delay(2000);
-            List<Player> winners = getWinner();
-            foreach(Player p in winners)
-            {
-                p.Money += Pot / winners.Count;
-            }
-            
+            await Task.Delay(500);
+
+            // If showdown (no early fold), ensure 5 community cards
+            while (board.Count < 5) board.Add(_deck.Pop());
+
+            var winners = getWinner();
+            int share = winners.Count > 0 ? Pot / winners.Count : 0;
+            foreach (var w in winners) w.Money += share;
+
             Pot = 0;
-            _starting_cycle_start_index = 0;
-            _cycle_start_index = 0;
             await BroadcastStateAsync();
-            await Task.Delay(2000);
-            Player end = _players[^1];
-            _players.RemoveAt(_players.Count - 1);
-            _players.Insert(0, end);
-            //board.Clear();
-            //startRound();
-            await BroadcastAsync(new { type = "update", currentBet = betSize });
-            await BroadcastAsync(new { type = "pause"});
+            await Task.Delay(500);
+
+            // Rotate dealer
+            _dealerIndex = NextIndex(_dealerIndex);
             totalRounds++;
+            await BroadcastAsync(new { type = "update", currentBet = betSize });
+            await BroadcastAsync(new { type = "pause" });
         }
-        
+
         private List<Player> getWinner()
         {
-            List<Player> canWin = new List<Player>();
-            foreach (var player in _players)
-            {
-                if (player.isPlaying)
-                {
-                    canWin.Add(player);
-                }
-            }
-            while (board.Count < 5)
-            {
-                board.Add(_deck.Pop());
-            }
-            return RankHand.getwinners(canWin, board);
+            var contenders = _players.Where(p => p.isPlaying).ToList();
+            return RankHand.getwinners(contenders, board);
         }
     }
 }
