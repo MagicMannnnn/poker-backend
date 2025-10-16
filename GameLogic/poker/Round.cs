@@ -229,6 +229,9 @@ namespace PokerServer.GameLogic.poker
                 while (!_players[_playerIndex].isPlaying && _players[_playerIndex].Money <= 0)
                 {
                     _playerIndex = NextIndex(_playerIndex);
+                    _playerIndex--;
+                    if (_playerIndex < 0) _playerIndex += _players.Count;
+                    AdvanceToNextActive();
                     counter++;
                     if (counter == _players.Count)
                     {
