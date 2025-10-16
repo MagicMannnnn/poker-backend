@@ -225,13 +225,12 @@ namespace PokerServer.GameLogic.poker
 
                 // Next street: first to act is left of dealer
                 _playerIndex = NextIndex(_dealerIndex);
+                _playerIndex--;
+                if (_playerIndex < 0) _playerIndex += _players.Count;
+                AdvanceToNextActive();
                 int counter = 0;
                 while (!_players[_playerIndex].isPlaying && _players[_playerIndex].Money <= 0)
                 {
-                    _playerIndex = NextIndex(_playerIndex);
-                    _playerIndex--;
-                    if (_playerIndex < 0) _playerIndex += _players.Count;
-                    AdvanceToNextActive();
                     counter++;
                     if (counter == _players.Count)
                     {
