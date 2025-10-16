@@ -49,24 +49,31 @@ namespace PokerServer.GameLogic.poker
                     p.setHand(_deck.Pop(), _deck.Pop());
             }
 
-            _players.RemoveAll(p => p.Money <= 0 && !p.isPlaying);
+            //_players.RemoveAll(p => p.Money <= 0 && !p.isPlaying);
             if (_players.Count < 2) return;
 
-            SmallBlind = SmallBlind + ((int)Math.Floor((float)(totalRounds / _players.Count)) * 10);
-            BigBlind = BigBlind + ((int)Math.Floor((float)(totalRounds / _players.Count)) * 20);
+            SmallBlind = 10 + ((int)Math.Floor((float)(totalRounds / _players.Count)) * 10);
+            BigBlind = 20 + ((int)Math.Floor((float)(totalRounds / _players.Count)) * 20);
             // Post blinds
+            // Dealer -> SB -> BB
             int sb = NextIndex(_dealerIndex);
             int bb = NextIndex(sb);
-            PostBlind(sb, SmallBlind);
+
+            // Post blinds (handle short stacks)
             PostBlind(bb, BigBlind);
+            PostBlind(sb, Math.Min(SmallBlind, _players[bb].Bet / 2));
+
+            // The current bet to match is whatever the BB actually put in
             betSize = _players[bb].Bet;
 
-            // Preflop: first to act is left of big blind
+            // Preflop starts with the seat left of the BB
             _playerIndex = NextIndex(bb);
             while (!_players[_playerIndex].isPlaying) _playerIndex = NextIndex(_playerIndex);
 
+            // Preflop bookkeeping
             _street = 0;
-            _lastAggressorIndex = -1; // no aggressor yet; BB must still get a chance to act
+            _lastAggressorIndex = bb;              // the blind is the live bet
+            ResetToActAllActiveExcept(bb);         // everyone except BB must act first (BB acts last)
 
             // Preflop: everyone (including BB) must act at least once
             ResetToActAllActiveExcept(-1);
@@ -116,64 +123,64 @@ namespace PokerServer.GameLogic.poker
                     return AfterActionContinue();
 
                 case "check":
-                {
-                    int toCall = betSize - actor.Bet;
-                    if (toCall > 0)
                     {
-                        // Treat as call if there is a live bet (UI might send "check" when it means "call")
+                        int toCall = betSize - actor.Bet;
+                        if (toCall > 0)
+                        {
+                            // Treat as call if there is a live bet (UI might send "check" when it means "call")
+                            int pay = Math.Min(toCall, actor.Money);
+                            actor.Money -= pay;
+                            actor.Bet += pay;
+                            Pot += pay;
+                            if (actor.Money == 0) RemoveAllInFromToAct(_playerIndex);
+                        }
+                        _toAct.Remove(_playerIndex);
+                        return AfterActionContinue();
+                    }
+
+                case "call":
+                    {
+                        int toCall = Math.Max(0, betSize - actor.Bet);
+                        if (toCall == 0)
+                        {
+                            _toAct.Remove(_playerIndex);
+                            return AfterActionContinue();
+                        }
+
                         int pay = Math.Min(toCall, actor.Money);
                         actor.Money -= pay;
                         actor.Bet += pay;
                         Pot += pay;
                         if (actor.Money == 0) RemoveAllInFromToAct(_playerIndex);
-                    }
-                    _toAct.Remove(_playerIndex);
-                    return AfterActionContinue();
-                }
 
-                case "call":
-                {
-                    int toCall = Math.Max(0, betSize - actor.Bet);
-                    if (toCall == 0)
-                    {
                         _toAct.Remove(_playerIndex);
                         return AfterActionContinue();
                     }
 
-                    int pay = Math.Min(toCall, actor.Money);
-                    actor.Money -= pay;
-                    actor.Bet += pay;
-                    Pot += pay;
-                    if (actor.Money == 0) RemoveAllInFromToAct(_playerIndex);
-
-                    _toAct.Remove(_playerIndex);
-                    return AfterActionContinue();
-                }
-
                 case "bet":
                 case "raise":
-                {
-                    // amount is the add-on, not the total
-                    if (amount <= 0 || amount > actor.Money) return false;
+                    {
+                        // amount is the add-on, not the total
+                        if (amount <= 0 || amount > actor.Money) return false;
 
-                    actor.Money -= amount;
-                    actor.Bet += amount;
-                    Pot += amount;
+                        actor.Money -= amount;
+                        actor.Bet += amount;
+                        Pot += amount;
 
-                    // Must exceed previous bet level
-                    if (actor.Bet <= betSize) return false;
+                        // Must exceed previous bet level
+                        if (actor.Bet <= betSize) return false;
 
-                    betSize = actor.Bet;
-                    _lastAggressorIndex = _playerIndex;
+                        betSize = actor.Bet;
+                        _lastAggressorIndex = _playerIndex;
 
-                    // When someone bets/raises, EVERY other active player must respond again
-                    ResetToActAllActiveExcept(_lastAggressorIndex);
+                        // When someone bets/raises, EVERY other active player must respond again
+                        ResetToActAllActiveExcept(_lastAggressorIndex);
 
-                    if (actor.Money == 0) RemoveAllInFromToAct(_playerIndex);
+                        if (actor.Money == 0) RemoveAllInFromToAct(_playerIndex);
 
-                    AdvanceToNextActive();
-                    return true;
-                }
+                        AdvanceToNextActive();
+                        return true;
+                    }
 
                 default:
                     return false;
