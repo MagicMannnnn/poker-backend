@@ -111,7 +111,7 @@ namespace PokerServer.GameLogic
                     money = p.Money,
                     betAmount = p.Bet,
                     isHost = p.IsHost,
-                    hand = started && p.Id == recipient.Id ? p.hand : recipient.isPlaying ? _playingHand : _foldedHand
+                    hand = started && p.Id == recipient.Id ? p.hand : p.isPlaying ? _playingHand : _foldedHand
                 }).ToArray();
 
                 var rotPlayers = RotateRight(players, _round?.totalRounds ?? 0);
@@ -136,7 +136,7 @@ namespace PokerServer.GameLogic
                     money = p.Money,
                     betAmount = p.Bet,
                     isHost = p.IsHost,
-                    hand = p.hand
+                    hand = p.isPlaying ? p.hand : _foldedHand
                 }).ToArray();
 
                 var rotPlayers = RotateRight(players, _round?.totalRounds ?? 0);
