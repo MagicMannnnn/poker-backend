@@ -13,6 +13,10 @@ namespace PokerServer.GameLogic
         private bool started = false;
         private Round _round;
 
+
+        private string[] _playingHand = { "card_back", "card_back" };
+        private string[] _foldedHand = { "card_back_transparent", "card_back_transparent" };
+
         public Game(string code)
         {
             Code = code;
@@ -107,7 +111,7 @@ namespace PokerServer.GameLogic
                     money = p.Money,
                     betAmount = p.Bet,
                     isHost = p.IsHost,
-                    hand = started && p.Id == recipient.Id ? p.hand : null
+                    hand = started && p.Id == recipient.Id ? p.hand : recipient.isPlaying ? _playingHand : _foldedHand
                 }).ToArray();
 
                 var rotPlayers = RotateRight(players, _round?.totalRounds ?? 0);
@@ -132,7 +136,7 @@ namespace PokerServer.GameLogic
                     money = p.Money,
                     betAmount = p.Bet,
                     isHost = p.IsHost,
-                    hand = p.hand
+                    hand = recipient.isPlaying ? p.hand : _foldedHand
                 }).ToArray();
 
                 var rotPlayers = RotateRight(players, _round?.totalRounds ?? 0);

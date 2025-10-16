@@ -1,233 +1,186 @@
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
 namespace PokerServer.GameLogic.poker
 {
-    public class RankHand
+    public enum HandCategory
     {
-        public static Player? winner { get; set; }
-        private static List<Card> _board;
-        public static List<Player> getwinners(List<Player> players, List<Card> board)
+        HighCard = 0,
+        Pair = 1,
+        TwoPair = 2,
+        ThreeKind = 3,
+        Straight = 4,
+        Flush = 5,
+        FullHouse = 6,
+        FourKind = 7,
+        StraightFlush = 8
+    }
+
+    public sealed class HandRank : IComparable<HandRank>
+    {
+        public HandCategory Category { get; }
+        public int[] Ranks { get; } // tie-breakers in descending priority (e.g., for pair: pair rank, kickers...)
+        public Player Player { get; }
+
+        public HandRank(HandCategory cat, IEnumerable<int> ranks, Player player)
         {
-            List<Player> winners = new List<Player>();
-            if (winner != null)
-            {
-                winners.Add(winner);
-                return winners;
-            }
-
-            _board = board;
-
-            float[] scores = new float[players.Count];
-
-            for (int i = 0; i < players.Count; i++)
-            {
-                List<Card> cards = new List<Card>();
-                cards.AddRange(_board);
-                cards.AddRange(players[i].realhand);
-                float best = 0;
-                foreach (var setOfFive in ComboUtil.KCombinations(cards, 5))
-                {
-                    float highCard = getHighCard(players[i].realhand);
-                    best = Math.Max(best, highCard + getPair(setOfFive) + getTwoPair(setOfFive) + getTOAK(setOfFive) + getStraight(setOfFive) + getFlush(setOfFive) + getFH(setOfFive) + getFOAK(setOfFive) + getStraightFlush(setOfFive));
-                }
-                scores[i] = best;
-                Console.WriteLine(i + ": " + scores[i]);
-            }
-
-            float max = scores.Max();
-            Console.WriteLine(max);
-            int[] idx = scores.Select((v, i) => (v, i))
-                         .Where(t => t.v == max)
-                         .Select(t => t.i)
-                         .ToArray();
-            foreach (int index in idx)
-            {
-                Console.WriteLine(index);
-                winners.Add(players[index]);
-            }
-
-            return winners;
+            Category = cat;
+            Ranks = ranks.ToArray();
+            Player = player;
         }
 
-
-        private static float getHighCard(Card[] cards)
+        public int CompareTo(HandRank? other)
         {
-            int bestValue = 0;
-            foreach (Card card in cards)
+            if (other is null) return 1;
+            int c = Category.CompareTo(other.Category);
+            if (c != 0) return c;
+            // Lexicographic compare of rank arrays
+            int len = Math.Max(Ranks.Length, other.Ranks.Length);
+            for (int i = 0; i < len; i++)
             {
-                bestValue = Math.Max(bestValue, card.Value);
-            }
-            return (float)(bestValue / 15f);
-        }
-
-        private static float getPair(Card[] cards)
-        {
-            int bestValue = 0;
-            for (int i = 0; i < cards.Length; i++)
-            {
-                Card card = cards[i];
-                for (int j = i + 1; j < cards.Length; j++)
-                {
-                    Card card2 = cards[j];
-                    if (card.Value == card2.Value)
-                    {
-                        bestValue = Math.Max(bestValue, card.Value);
-                    }
-                }
-            }
-            return bestValue == 0 ? 0 : 10 + (float)(bestValue / 15f);
-        }
-
-        private static float getTwoPair(Card[] cards)
-        {
-            int highPair = 0; // highest pair rank
-            int lowPair = 0; // second highest pair rank
-
-            for (int i = 0; i < cards.Length; i++)
-            {
-                for (int j = i + 1; j < cards.Length; j++)
-                {
-                    if (cards[i].Value == cards[j].Value)
-                    {
-                        int v = cards[i].Value;
-
-                        // ignore duplicates of the same rank (we only want distinct pair ranks)
-                        if (v == highPair || v == lowPair) continue;
-
-                        // place v into high/low keeping them ordered
-                        if (v > highPair)
-                        {
-                            lowPair = highPair;
-                            highPair = v;
-                        }
-                        else if (v > lowPair)
-                        {
-                            lowPair = v;
-                        }
-                    }
-                }
-            }
-
-            // need two *distinct* pairs
-            if (lowPair == 0 || highPair == 0) return 0f;
-
-            // scoring similar to your style: base 20 + tie-breakers
-            // (high pair dominates; low pair is a smaller tie-breaker)
-            return 100f + (highPair / 15f);
-        }
-
-
-
-        private static float getTOAK(Card[] cards)
-        {
-            int bestValue = 0;
-            for (int i = 0; i < cards.Length; i++)
-            {
-                Card card = cards[i];
-                for (int j = i + 1; j < cards.Length; j++)
-                {
-                    Card card2 = cards[j];
-                    for (int k = j + 1; k < cards.Length; k++)
-                    {
-                        Card card3 = cards[k];
-                        if (card.Value == card2.Value && card2.Value == card3.Value)
-                        {
-                            bestValue = Math.Max(bestValue, card.Value);
-                        }
-                    }
-                }
-            }
-            return bestValue == 0 ? 0 : 1000 + (float)(bestValue / 15f);
-        }
-
-
-        private static float getStraight(Card[] cards)
-        {
-            Array.Sort(cards, (a, b) => a.Value.CompareTo(b.Value));
-
-            int prevValue = cards[0].Value;
-            for (int i = 1; i < cards.Length; i++)
-            {
-                if (cards[i].Value == prevValue + 1)
-                {
-                    prevValue++;
-                }
-                else
-                {
-                    return 0;
-                }
-            }
-            return 10000 + (float)(prevValue / 15f);
-        }
-
-        private static float getFlush(Card[] cards)
-        {
-            String prevSuit = cards[0].Suit;
-            for (int i = 1; i < cards.Length; i++)
-            {
-                if (!(cards[i].Suit == prevSuit))
-                {
-                    return 0;
-                }
-            }
-            Array.Sort(cards, (a, b) => b.Value.CompareTo(a.Value));
-            return 100000 + (float)(cards[0].Value / 15f);
-        }
-
-        private static float getFH(Card[] cards)
-        {
-            var groups = cards
-            .GroupBy(c => c.Value)
-            .Select(g => new { Value = g.Key, Count = g.Count() })
-            .OrderByDescending(g => g.Count)
-            .ThenByDescending(g => g.Value)
-            .ToArray();
-
-            if (groups.Length == 2 && groups.Any(g => g.Count == 3) && groups.Any(g => g.Count == 2))
-            {
-                int three = groups.First(g => g.Count == 3).Value;
-                int pair = groups.First(g => g.Count == 2).Value;
-
-                // score however you like; example:
-                return 10000000 + Math.Max(three, pair) / 15f;
-            }
-            return 0f;
-        }
-
-
-        private static float getFOAK(Card[] cards)
-        {
-            int bestValue = 0;
-            for (int i = 0; i < cards.Length; i++)
-            {
-                Card card = cards[i];
-                for (int j = i + 1; j < cards.Length; j++)
-                {
-                    Card card2 = cards[j];
-                    for (int k = j + 1; k < cards.Length; k++)
-                    {
-                        Card card3 = cards[k];
-                        for (int l = k + 1; l < cards.Length; l++)
-                        {
-                            Card card4 = cards[l];
-                            if (card.Value == card2.Value && card2.Value == card3.Value && card3.Value == card4.Value)
-                            {
-                                bestValue = Math.Max(bestValue, card.Value);
-                            }
-                        }
-                    }
-                }
-            }
-            return bestValue == 0 ? 0 : 10000000 + (float)(bestValue / 15f);
-        }
-
-        private static float getStraightFlush(Card[] cards)
-        {
-            if (getStraight(cards) > 0 && getFlush(cards) > 0)
-            {
-                return 100000000 + getStraight(cards);
+                int a = i < Ranks.Length ? Ranks[i] : 0;
+                int b = i < other.Ranks.Length ? other.Ranks[i] : 0;
+                if (a != b) return a.CompareTo(b);
             }
             return 0;
         }
-
     }
 
+    public static class RankHand
+    {
+        public static Player? winner { get; set; }
+
+        public static List<Player> getwinners(List<Player> players, List<Card> board)
+        {
+            // If there's exactly one active player (everyone else folded) the caller sets winner.
+            if (winner != null)
+                return new List<Player> { winner };
+
+            var result = new List<(HandRank rank, Player player)>();
+            foreach (var p in players)
+            {
+                var seven = new List<Card>(board);
+                seven.AddRange(p.realhand);
+
+                HandRank best = null!;
+                foreach (var five in ComboUtil.KCombinations(seven, 5))
+                {
+                    var hr = Evaluate5(five, p);
+                    if (best == null || hr.CompareTo(best) > 0)
+                        best = hr;
+                }
+                result.Add((best, p));
+            }
+
+            // Find best hand(s)
+            var bestRank = result.Max(t => t.rank);
+            var winners = result.Where(t => t.rank.CompareTo(bestRank) == 0)
+                                .Select(t => t.player)
+                                .ToList();
+            return winners;
+        }
+
+        private static HandRank Evaluate5(Card[] cards, Player player)
+        {
+            // map to values and suits
+            var values = cards.Select(c => c.Value).OrderByDescending(v => v).ToArray();
+            var suits = cards.Select(c => c.Suit).ToArray();
+
+            bool isFlush = suits.Distinct(StringComparer.OrdinalIgnoreCase).Count() == 1;
+            // For straight, handle wheel (A-2-3-4-5)
+            bool isStraight;
+            int topStraight;
+            (isStraight, topStraight) = IsStraight(cards);
+
+            if (isStraight && isFlush)
+                return new HandRank(HandCategory.StraightFlush, new[] { topStraight }, player);
+
+            // group by value
+            var groups = cards.GroupBy(c => c.Value)
+                              .Select(g => new { Value = g.Key, Count = g.Count() })
+                              .OrderByDescending(g => g.Count)
+                              .ThenByDescending(g => g.Value)
+                              .ToList();
+
+            if (groups[0].Count == 4)
+            {
+                // Four of a kind
+                int four = groups[0].Value;
+                int kicker = groups.First(g => g.Count == 1).Value;
+                return new HandRank(HandCategory.FourKind, new[] { four, kicker }, player);
+            }
+
+            if (groups[0].Count == 3 && groups[1].Count == 2)
+            {
+                // Full house
+                int trips = groups[0].Value;
+                int pair = groups[1].Value;
+                return new HandRank(HandCategory.FullHouse, new[] { trips, pair }, player);
+            }
+
+            if (isFlush)
+            {
+                // Flush: top five high cards
+                var ordered = cards.Select(c => c.Value).OrderByDescending(v => v).ToArray();
+                return new HandRank(HandCategory.Flush, ordered, player);
+            }
+
+            if (isStraight)
+                return new HandRank(HandCategory.Straight, new[] { topStraight }, player);
+
+            if (groups[0].Count == 3)
+            {
+                int trips = groups[0].Value;
+                var kickers = groups.Where(g => g.Count == 1).Select(g => g.Value).OrderByDescending(v => v);
+                return new HandRank(HandCategory.ThreeKind, (new[] { trips }).Concat(kickers), player);
+            }
+
+            if (groups[0].Count == 2 && groups[1].Count == 2)
+            {
+                int highPair = Math.Max(groups[0].Value, groups[1].Value);
+                int lowPair = Math.Min(groups[0].Value, groups[1].Value);
+                int kicker = groups.First(g => g.Count == 1).Value;
+                return new HandRank(HandCategory.TwoPair, new[] { highPair, lowPair, kicker }, player);
+            }
+
+            if (groups[0].Count == 2)
+            {
+                int pair = groups[0].Value;
+                var kickers = groups.Where(g => g.Count == 1).Select(g => g.Value).OrderByDescending(v => v);
+                return new HandRank(HandCategory.Pair, (new[] { pair }).Concat(kickers), player);
+            }
+
+            // High card
+            return new HandRank(HandCategory.HighCard, values, player);
+        }
+
+        private static (bool isStraight, int top) IsStraight(Card[] cards)
+        {
+            var vals = cards.Select(c => c.Value).Distinct().ToList();
+            vals.Sort();
+
+            // wheel check (A=14 treated as 1)
+            if (vals.Contains(14))
+                vals.Add(1);
+
+            int run = 1;
+            int bestTop = 0;
+            for (int i = 1; i < vals.Count; i++)
+            {
+                if (vals[i] == vals[i-1] + 1)
+                {
+                    run++;
+                }
+                else if (vals[i] != vals[i-1])
+                {
+                    run = 1;
+                }
+                if (run >= 5)
+                    bestTop = Math.Max(bestTop, vals[i]);
+            }
+            return (bestTop > 0, bestTop);
+        }
+    }
 }
