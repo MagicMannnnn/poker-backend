@@ -66,10 +66,10 @@ namespace PokerServer.GameLogic.poker
             while (!_players[_playerIndex].isPlaying) _playerIndex = NextIndex(_playerIndex);
 
             _street = 0;
-            _lastAggressorIndex = bb;
+            _lastAggressorIndex = -1; // no aggressor yet; BB must still get a chance to act
 
-            // Everyone EXCEPT last aggressor must respond to the live bet
-            ResetToActAllActiveExcept(_lastAggressorIndex);
+            // Preflop: everyone (including BB) must act at least once
+            ResetToActAllActiveExcept(-1);
         }
 
         private void PostBlind(int idx, int amount)
