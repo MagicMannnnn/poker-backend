@@ -218,7 +218,17 @@ namespace PokerServer.GameLogic.poker
 
                 // Next street: first to act is left of dealer
                 _playerIndex = NextIndex(_dealerIndex);
-                while (!_players[_playerIndex].isPlaying) _playerIndex = NextIndex(_playerIndex);
+                int counter = 0;
+                while (!_players[_playerIndex].isPlaying && _players[_playerIndex].Money <= 0)
+                {
+                    _playerIndex = NextIndex(_playerIndex);
+                    counter++;
+                    if (counter == _players.Count)
+                    {
+                        await EndRound(BroadcastStateAsync, BroadcastAsync);
+                        return true;
+                    }
+                }
 
                 // No aggressor yet; everyone has to act at least once
                 ResetToActAllActiveExcept(exceptIndex: -1);
