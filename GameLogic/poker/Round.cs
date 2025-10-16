@@ -52,9 +52,9 @@ namespace PokerServer.GameLogic.poker
             //_players.RemoveAll(p => p.Money <= 0 && !p.isPlaying);
             if (_players.Count < 2) return;
 
-            SmallBlind = 10 + ((int)Math.Floor((float)(totalRounds / _players.Count)) * 10);
-            BigBlind = 20 + ((int)Math.Floor((float)(totalRounds / _players.Count)) * 20);
-            // Post blinds
+            int orbits = totalRounds / _players.Count;   // integer division = completed orbits
+            SmallBlind = 10 * (1 << orbits);             // 10 * 2^orbits
+            BigBlind   = 20 * (1 << orbits);            // Post blinds
             // Dealer -> SB -> BB
             int sb = NextIndex(_dealerIndex);
             int bb = NextIndex(sb);
