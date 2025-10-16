@@ -93,7 +93,7 @@ namespace PokerServer.GameLogic.poker
             for (int step = 0; step < n; step++)
             {
                 _playerIndex = (_playerIndex + 1) % n;
-                if (_players[_playerIndex].isPlaying) return;
+                if (_players[_playerIndex].isPlaying && _players[_playerIndex].Money > 0) return;
             }
         }
 
